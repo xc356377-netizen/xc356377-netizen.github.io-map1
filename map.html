@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Content-Security-Policy" content="font-size-adjust: none">
+    <title>Map</title>
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="//at.alicdn.com/t/c/font_5088261_bgdk38nv4hs.js"></script>
+    <style>
+        /* 全局样式重置 & 基础变量 */
+        :root {
+            --primary-color: #8B4513; /* 木质色调，贴合宗祠主题 */
+            --secondary-color: #F5F0E6; /* 米色背景 */
+            --accent-color: #D2691E; /* 点缀色 */
+            --shadow-color: rgba(0, 0, 0, 0.2);
+            --transition-base: all 0.3s ease;
+            --border-radius-sm: 8px;
+            --border-radius-md: 12px;
+            --border-radius-lg: 16px;
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+            background-color: var(--secondary-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transform: none !important;
+            text-size-adjust: none !important;
+            -webkit-text-size-adjust: none !important;
+            -moz-text-size-adjust: none !important;
+            -ms-text-size-adjust: none !important;
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif; /* 统一字体 */
+            opacity: 0; /* 页面加载过渡 */
+            animation: pageFadeIn 0.8s ease forwards;
+        }
+
+        /* 页面加载动画 */
+        @keyframes pageFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .img-container {
+            position: relative;
+            height: 100vh;
+            max-width: 100%;
+            overflow: hidden;
+        }
+
+        .umg {
+            height: 100vh;
+            width: auto;
+            object-fit: cover; /* 改为cover，避免留白 */
+            object-position: center;
+            filter: brightness(0.95) contrast(1.02); /* 微调图片质感 */
+        }
+
+        /* 懒加载图片占位符样式 */
+        .lazy-img {
+            background: #f5f0e6 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='%238B4513' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cline x1='12' y1='8' x2='12' y2='12'%3E%3C/line%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'%3E%3C/line%3E%3C/svg%3E") center no-repeat;
+            background-size: 40px;
+            min-height: 100px;
+            transition: opacity 0.3s ease;
+            opacity: 0.8;
+        }
+
+        .lazy-img.loaded {
+            opacity: 1;
+            background: none;
+        }
+
+        /* 通用按钮样式（保持原有美化效果，不修改） */
+        .react-btn {
+            flex-shrink: 0 !important;
+            flex-grow: 0 !important;
+            box-sizing: border-box !important;
+            transform: translate(-50%, -50%) scale(1) !important;
+            transform-origin: center center !important;
+            position: absolute;
+            /* 渐变背景 */
+            background: linear-gradient(135deg, #fff, #f8f5f0);
+            border-radius: var(--border-radius-md);
+            border: 2px solid var(--primary-color); /* 统一边框色 */
+            color: var(--primary-color);
+            font-size: 12px !important; /* 字号微调 */
+            font-weight: 600;
+            text-align: center;
+            line-height: 24px !important;
+            cursor: pointer;
+            z-index: 5 !important;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            resize: none;
+            /* 立体阴影 */
+            box-shadow: 0 3px 6px var(--shadow-color);
+            /* 过渡动画 */
+            transition: var(--transition-base);
+            padding: 0 8px; /* 内边距优化 */
+        }
+
+        /* 按钮悬浮效果（保持原有） */
+        .react-btn:hover {
+            background: linear-gradient(135deg, #f8f5f0, #f0ebe1);
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            transform: translate(-50%, -50%) scale(1.05) !important; /* 轻微放大 */
+            box-shadow: 0 4px 8px rgba(210, 105, 30, 0.2);
+        }
+
+        /* 按钮尺寸微调（保持原有定位） */
+        .react1 { width: 95px !important; height: 30px !important; left: 58%; top: 44%; }
+        .react2 { width: 70px !important; height: 30px !important; left: 52%; top: 58%; }
+        .react3 { width: 70px !important; height: 28px !important; left: 70%; top: 38.5%; }
+        .react4 { width: 70px !important; height: 28px !important; left: 79%; top: 59%; }
+        .react5 { width: 75px !important; height: 30px !important; left: 60%; top: 65%; }
+        .react6 { width: 75px !important; height: 30px !important; left: 67%; top: 82%; }
+        .react8 { width: 75px !important; height: 30px !important; left: 56%; top: 92%; }
+        .react9 { width: 75px !important; height: 30px !important; left: 50%; top: 86%; }
+
+        /* 图标激活态（保持原有美化） */
+        .react-btn.active {
+            background-color: transparent;
+            border: none !important;
+            color: var(--accent-color);
+            text-shadow: 0 0 6px rgba(0,0,0,0.3);
+            transform: translate(-50%, -50%) scale(1.1) !important; /* 适度放大 */
+            font-size: 80px !important;
+            box-shadow: none;
+            /* 呼吸动画 */
+            animation: breath 2s infinite ease-in-out;
+        }
+
+        /* 呼吸动画（保持原有） */
+        @keyframes breath {
+            0%, 100% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.1) !important; }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15) !important; }
+        }
+
+        /* 激活态位置微调（保持原有） */
+        .react1.active { width: 200px !important; height: 300px !important; left: 58%; top: 40%; }
+        .react2.active { width: 200px !important; height: 300px !important; left: 52%; top: 53%; }
+        .react3.active { width: 200px !important; height: 300px !important; left: 70%; top: 34%; }
+        .react4.active { width: 200px !important; height: 300px !important; left: 80%; top: 54%; }
+        .react5.active { width: 200px !important; height: 300px !important; left: 60%; top: 62%; }
+        .react6.active { width: 200px !important; height: 300px !important; left: 67%; top: 77%; }
+        .react8.active { width: 200px !important; height: 300px !important; left: 56%; top: 90%; }
+        .react9.active { width: 200px !important; height: 300px !important; left: 50%; top: 83%; }
+
+        /* Iconfont 图标优化（保持原有） */
+        .icon {
+            width: 1em;
+            height: 1em;
+            vertical-align: -0.15em;
+            fill: currentColor;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        /* 弹窗容器（重点：仅弹窗透明优化） */
+        .popup-wrapper {
+            position: absolute;
+            left: 0;
+            top: 0;
+            transform: none !important;
+            z-index: 20 !important;
+            display: none;
+            animation: popupFadeIn 0.4s ease forwards;
+            /* 弹窗透明毛玻璃：核心透明效果 */
+            background: rgba(255, 255, 255, 0.4); /* 弹窗背景65%透明 */
+            backdrop-filter: blur(8px); /* 修复笔误：8x → 8px */
+            -webkit-backdrop-filter: blur(8px);
+            padding: 8px;
+            border-radius: var(--border-radius-lg);
+            box-shadow: 0 8px 24px var(--shadow-color);
+            border: 1px solid rgba(255, 255, 255, 0.5); /* 透明边框 */
+        }
+
+        /* 文本弹窗样式（核心修复：移除滚动条，优化关闭按钮定位） */
+        .text-popup-wrapper {
+            position: absolute;
+            transform: none !important;
+            z-index: 25 !important; /* 层级高于图片弹窗 */
+            display: none;
+            animation: popupFadeIn 0.4s ease forwards;
+            background: rgba(255, 255, 255, 0.45); /* 文本弹窗透明度更高 */
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            padding: 30px 25px 20px; /* 顶部留空间给关闭按钮 */
+            border-radius: var(--border-radius-md);
+            box-shadow: 0 6px 20px var(--shadow-color);
+            border: 1px solid rgba(139, 69, 19, 0.1);
+            /* 取消高度限制，让弹窗自适应内容 */
+            max-width: 380px; /* 从280px调大到380px */
+            width: fit-content; /* 宽度自适应内容（不超过max-width） */
+            min-width: 280px; /* 最小宽度，避免太窄 */
+            min-height: unset; /* 移除最小高度限制 */
+            max-height: unset; /* 移除最大高度限制 */
+            overflow-y: visible; /* 禁用滚动条 */
+            box-sizing: border-box;
+            /* 确保弹窗不会超出屏幕 */
+            max-height: 80vh; /* 最多占屏幕80%高度 */
+            overflow-y: auto; /* 极端情况（内容极多）才显示滚动条，优先保证无滚动 */
+        }
+
+        /* 文本弹窗内容样式（优化字体大小） */
+        .text-popup-content {
+            color: var(--primary-color);
+            font-size: 16px; /* 从14px调大到16px */
+            line-height: 1.7; /* 行高微调，提升可读性 */
+            text-align: left;
+            margin: 0;
+        }
+
+        .text-close-btn {
+            position: absolute;
+            top: 10px; /* 从-8px改为10px，移入弹窗内部 */
+            right: 10px; /* 从-8px改为10px，移入弹窗内部 */
+            width: 24px; /* 调大按钮尺寸，更易点击 */
+            height: 24px;
+            /* 为渐变背景添加透明度（0.9可根据需要调整） */
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(245, 245, 245, 0.2));
+            color: var(--primary-color);
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.2); 
+            text-align: center;
+            line-height: 22px; /* 适配新尺寸 */
+            font-size: 14px; /* 调大叉号 */
+            cursor: pointer;
+            user-select: none;
+            transition: var(--transition-base);
+            box-shadow: 0 2px 6px var(--shadow-color);
+            font-weight: bold;
+            z-index: 30; /* 确保按钮在最上层 */
+        }
+
+        /* 可选：hover时恢复全透明，提升交互反馈 */
+        .text-close-btn:hover {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(245, 245, 245, 1));
+            opacity: 1; /* 鼠标悬浮时完全不透明 */
+            transform: scale(1.05); /* 轻微放大，增强交互感 */
+            box-shadow: 0 3px 8px var(--shadow-color);
+        }
+        /* 弹窗淡入动画（保持原有） */
+        @keyframes popupFadeIn {
+            from { opacity: 0; transform: scale(0.95) !important; }
+            to { opacity: 1; transform: scale(1) !important; }
+        }
+
+        /* 弹窗图片优化（轻微透明，配合弹窗整体效果） */
+        .popup-img {
+            border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: block;
+            opacity: 0.92; /* 图片轻微透明，与弹窗呼应 */
+            transition: var(--transition-base);
+            width: 100%; /* 改为100%适配容器 */
+            height: auto;
+            object-fit: cover; /* 图片裁剪优化 */
+        }
+
+        /* 进度条容器美化（保持原有，不透明） */
+        .progress-container {
+            width: 100%;
+            height: 10px;
+            background-color: rgba(240, 240, 240, 0.4);
+            border-top: none;
+            border-radius: 0 0 var(--border-radius-md) var(--border-radius-md);
+            overflow: hidden;
+            box-sizing: border-box;
+            margin-top: -4px; /* 微调间距 */
+        }
+
+     /* 渐变进度条（增加透明度，保持原有渐变） */
+        .progress-bar {
+            height: 100%;
+            /* 为渐变颜色添加透明度（最后一位是透明度值，0.8可根据需要调整） */
+            background: linear-gradient(90deg, 
+                rgba(139, 69, 19, 0.6), 
+                rgba(210, 105, 30, 0.6), 
+                rgba(244, 164, 96, 0.6));
+            width: 0%;
+            transition: width 0.2s ease; /* 更流畅的过渡 */
+            border-radius: 0 0 var(--border-radius-md) var(--border-radius-md);
+            /* 进度条光效 */
+            position: relative;
+        }
+
+        /* 进度条光效伪元素（保持原有，可同步调整光效透明度） */
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            /* 调整光效的透明度（0.2可根据需要调整） */
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: progressLight 1.5s infinite linear;
+            /* 确保光效不影响进度条透明度 */
+            pointer-events: none;
+        }
+
+        /* 补充光效动画（如果之前没有定义） */
+        @keyframes progressLight {
+            0% {
+                transform: translateX(-100%);
+            }
+            100% {
+                transform: translateX(100%);
+            }
+        }
+        /* 关闭按钮美化（保持原有，透明） */
+        .close-btn {
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            width: 24px;
+            height: 24px;
+            /* 为渐变背景添加透明度（0.9 可按需调整） */
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.6), rgba(245, 245, 245, 0.6));
+            color: var(--primary-color);
+            border-radius: 50%;
+            /* 可选：给边框也添加透明度，更柔和 */
+            border: 2px solid rgba(139, 69, 19, 0.4); /* 修复var(--primary-color-rgb)未定义问题 */
+            text-align: center;
+            line-height: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            user-select: none;
+            transition: var(--transition-base);
+            box-shadow: 0 4px 8px var(--shadow-color);
+            font-weight: bold;
+        }
+
+        .close-btn:hover {
+            /* hover 时调整透明度，保留红色系的视觉反馈 */
+            background: linear-gradient(135deg, rgba(248, 245, 240, 0.95), rgba(240, 235, 225, 0.95));
+            color: #ff4444;
+            /* hover 边框透明度提高，增强视觉对比 */
+            border-color: rgba(255, 68, 68, 0.95);
+            transform: scale(1.1);
+            /* 阴影也添加透明度，保持风格统一 */
+            box-shadow: 0 5px 10px rgba(255, 68, 68, 0.15);
+        }
+        /* 全局禁止缩放（兜底） */
+        * {
+            max-width: none !important;
+            max-height: none !important;
+            min-width: auto !important;
+            min-height: auto !important;
+            transform: none !important;
+            text-size-adjust: none !important;
+            -webkit-text-size-adjust: none !important;
+            box-sizing: border-box; /* 统一盒模型 */
+        }
+
+        /* 移动端适配：小屏幕自动缩小文本弹窗 */
+        @media (max-width: 768px) {
+            .text-popup-wrapper {
+                max-width: 280px !important;
+                padding: 25px 15px 15px !important;
+            }
+            .text-popup-content {
+                font-size: 14px !important;
+                line-height: 1.6 !important;
+            }
+            .text-close-btn {
+                width: 20px !important;
+                height: 20px !important;
+                line-height: 18px !important;
+                font-size: 12px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="img-container">
+        <!-- 首屏背景图正常加载，非首屏图片用懒加载 -->
+        <img src="img/6.jpg" class="umg" alt="谢式大宗祠背景图">
+        <!-- 按钮1：谢式大宗祠（自定义更大的文本弹窗） -->
+        <div class="react-btn react1" 
+             data-original-text="谢式大宗祠"
+             data-audio="Mps/3.mp3"
+             data-popup-img="img/4.jpg"
+             data-popup-width="300px"    
+             data-popup-height="auto"   
+             data-popup-left="calc(52% + 100px)"  
+             data-popup-top="40%"
+             data-text-content="现在我们来到整个古村的核心一一谢氏大宗祠！这里是南社谢氏家族的总祠堂，是维系整个宗族血脉和文化的精神纽带！
+             大家抬头看大门上方那四个大字：“兰桂腾芳”！这寓意多么美好啊！
+             象征着家族人才辈出，德行高尚，美名远扬，寄托着祖先对子孙后代最深切的期望！这座宗祠，过去不仅是祭祀祖先、商议族中大事的地方，更是传承家风祖训最重要的场所◇直到今天，每逢族中的重大节庆或重要时刻，族人们依然会聚集在这里，聆听祖辈的教诲，铭记“修身齐家、孝悌忠信”的处世之道。正是这份坚守，让优秀的传统文化在咱们南社，一代一代，生生不息，焕发着新的生机！"
+             data-text-left="calc(5% + 20px)"
+             data-text-top="30%"
+             data-text-width="420px"  
+             data-text-height="auto"> 
+             谢式大宗祠
+        </div>
+        <!-- 按钮2：百岁坊（修复定位，取消固定高度） -->
+        <div class="react-btn react2" 
+             data-original-text="百岁坊"
+             data-audio="Mps/1.mp3"  
+             data-popup-img="img/5.jpg"
+             data-popup-width="250px"    
+             data-popup-height="200px"   
+             data-popup-left="calc(48% + 80px)"  
+             data-popup-top="55%"
+             data-text-content="这座特别的建筑一一百岁坊！它采用了非常独特的“前坊后祠”格局。
+             大家看它这斗拱，造型是不是特别精巧？像不像一柄如意？这不仅是建筑艺术的杰作，更承载着咱们南社深厚的忠孝文化！中央电视台还专门以这座百岁坊为核心，拍摄了纪录片，把咱们村尊老敬老的传统习俗传遍了全国！每年咱们的“南社忠孝文化节”啊，那场面才叫感人！学生们会在这里恭恭敬敬地为村里的百岁老人奉上“百岁茶”，表达敬意；老人们呢，则会把他们代代相传的家风家训，语重心长地回赠给晚辈。这一幕幕“老幼相承、德行永续”的画面，温暖人心！还有那规模盛大的“千叟宴”
+             ，全村乃至周边的长寿长者欢聚一堂，评选表彰，处处都闪耀着咱们中华民族尊老敬老、崇德向善的传统美德光辉!"
+             data-text-left="calc(2% + 35px)" 
+             data-text-top="20%"
+             data-text-width="380px" 
+             data-text-height="auto">      
+            百岁坊
+        </div>
+        <!-- 按钮3：望月楼（自定义窄一点的弹窗） -->
+        <div class="react-btn react3" 
+             data-original-text="望月楼"
+             data-audio="Mps/5.mp3"  
+             data-popup-img="img/7.jpg"
+             data-popup-width="350px"    
+             data-popup-height="auto"   
+             data-popup-left="calc(45% + 120px)" 
+             data-popup-top="40%"
+             data-text-content="现在我们眼前这座秀挺的建筑，就是南社古村独特的望月楼。它在众多平实民居中尤为醒目，是一座罕见的两层阁楼式建筑。望月楼位于班头巷巷口，晚节公祠左侧，巷全长57米，于明朝兴建而成，巷内多为南社富户。户中小姐常相约在望月楼或品茗闲聊或做女红，
+             常引来村中或外村的年轻小伙子故意从楼下经过，希望成为班头巷的乘龙快婿。这座将实用性与风雅情趣完美融合的楼阁，曾是族人登临赏月，静心攻读之所，是南社“崇文”传统与生活智慧的生动写照。"
+             data-text-left="calc(23% + 4px)"
+             data-text-top="27%"
+             data-text-width="320px"   
+             data-text-height="auto"> 
+            望月楼
+        </div>
+        <!-- 按钮4：家庙（使用全局默认大小） -->
+        <div class="react-btn react4" 
+             data-original-text="家庙"
+             data-audio="Mps/2.mp3"  
+             data-popup-img="img/16.jpg"
+             data-popup-width="280px"
+             data-popup-height="220px"
+             data-popup-left="calc(35% + 90px)"  
+             data-popup-top="25%"
+             data-text-content="现在我们面前这座宏伟的建筑是谢遇奇家庙，这座家庙建于清光绪二十七年（1901年）,是为纪念南社村的杰出先人谢遇奇而建。谢遇奇是清同治四年的武进士，曾跟随左宗棠远赴新疆平定叛乱，立下战功，后来官至总兵。这是南社村“崇文尚武”传统中，“尚武”精神的杰出代表 。家庙采用三间二进二廊一天井合院式布局，硬山屋顶，显得稳重肃穆。梁架上的金木雕以及屋脊上精美的陶塑。这些华丽的装饰，不仅是清代高超工艺的展现，更是家族对这位功勋人物的崇高敬意。家庙也于1993年被列为东莞市文物保护单位。"
+             data-text-left="calc(2% + 3px)"
+             data-text-top="15%">
+            家庙
+        </div>
+        <!-- 按钮5：南社人家（使用全局默认大小） -->
+        <div class="react-btn react5" 
+             data-original-text="南社人家"
+             data-audio="Mps/1.mp3"  
+             data-popup-img="img/11.jpg"
+             data-popup-width="280px"
+             data-popup-height="220px"
+             data-popup-left="calc(55% + 90px)"  
+             data-popup-top="59%"
+             data-text-content="“"
+             data-text-left="calc(15% + 3px)"
+             data-text-top="50%">
+             南社人家
+        </div>
+        <!-- 按钮6：资政第（使用全局默认大小） -->
+        <div class="react-btn react6" 
+             data-original-text="资政第"
+             data-audio="Mps/4.mp3"  
+             data-popup-img="img/10.jpg"
+             data-popup-width="280px"
+             data-popup-height="220px"
+             data-popup-left="calc(53% + 90px)"  
+             data-popup-top="37%"
+             data-text-content="咱们今天的最后一站，是这座气派的宅院一一资政第！这可是咱们村走出去的二品大员谢元俊的私家书院！谢元俊是光绪二年的进士，官做到了礼部郎中祠祭司行走。这座清代的民居，堪称岭南建筑艺术的一颗明珠！请大家细细欣赏：看这屋檐上的灰塑，色彩多么艳丽，造型多么生动！上面刻画的都是传统的神话故事、吉祥纹样，每一处都饱含着祈福纳祥的美好心愿！再看这些木雕门窗，工艺真是精湛绝伦！花鸟鱼虫、历史典故，全都雕刻得栩栩如
+生！每一刀、每一划，都凝聚着古代匠人对传统文化的深刻理解和无限热爱！说到这，不得不提咱们岭南饮食文化的精华﹣-“九大簋”!“簋”在古代可是重要的祭祀礼器，象征着礼仪与团圆。“九大簋”宴席，用九道丰盛的大菜来款待最尊贵的客
+人，这不仅延续了古老的饮食礼仪，更淋漓尽致地展现了咱们中国人热情好客、注重团圆的文化特质！"
+             data-text-left="calc(20% + 3px)"
+             data-text-top="27%">
+             资政第
+        </div>
+        <!-- 按钮9：将军别院（自定义大小，取消固定高度） -->
+        <div class="react-btn react9" 
+             data-original-text="将军别院"
+             data-audio="Mps/1.mp3"  
+             data-popup-img="img/14.jpg"
+             data-popup-width="280px"
+             data-popup-height="220px"
+             data-popup-left="calc(45% + 90px)"  
+             data-popup-top="55%"
+             data-text-content="将军别院是为纪念南社出身的清代武将而建，院落风格兼具岭南民居的精致与军旅的大气。院内陈列着将军的盔甲、兵器、书信等遗物，讲述着将军保家卫国的传奇故事。别院的建筑细节中融入了军事元素，如箭垛形的窗棂、刀币纹的木雕等，是研究岭南军事文化的重要实物资料。"
+             data-text-left="calc(8% + 3px)"
+             data-text-top="55%"
+             data-text-width="350px"   
+             data-text-height="auto"> <!-- 改为auto，自适应高度 -->
+             将军别院
+        </div>
+        <!-- 图片弹窗容器 -->
+        <div class="popup-wrapper" id="popupWrapper">
+            <img src="" class="popup-img lazy-img" id="popupImg" alt="详情图片">
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <span class="close-btn" id="closeBtn">×</span>
+        </div>
+        <!-- 文本弹窗容器 -->
+        <div class="text-popup-wrapper" id="textPopupWrapper">
+            <span class="text-close-btn" id="textCloseBtn">×</span>
+            <p class="text-popup-content" id="textPopupContent"></p>
+        </div>
+    </div>
+
+    <script>
+        // 禁止滚轮缩放
+        document.addEventListener('wheel', function(e) {
+            if (e.ctrlKey) e.preventDefault();
+        }, { passive: false });
+
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0')) {
+                e.preventDefault();
+            }
+        });
+
+        if (window.navigator && window.navigator.zoomTo) {
+            Object.defineProperty(window.navigator, 'zoomTo', { value: function() {}, writable: false });
+        }
+
+        // 全局变量
+        const popupWrapper = document.getElementById('popupWrapper');
+        const popupImg = document.getElementById('popupImg');
+        const progressBar = document.getElementById('progressBar');
+        const closeBtn = document.getElementById('closeBtn');
+        // 文本弹窗变量
+        const textPopupWrapper = document.getElementById('textPopupWrapper');
+        const textPopupContent = document.getElementById('textPopupContent');
+        const textCloseBtn = document.getElementById('textCloseBtn');
+        
+        let currentAudio = null;
+        let currentBtn = null;
+        let progressInterval = null;
+        let isPopupShow = false;
+        let isTextPopupShow = false; // 文本弹窗状态
+        let lazyImgObserver = null; // 懒加载观察者全局化
+
+        // ========== 1. 懒加载初始化 - 修复重复加载问题 ==========
+        function initLazyLoad() {
+            // 兼容IntersectionObserver（低版本浏览器降级）
+            if (!('IntersectionObserver' in window)) {
+                // 降级方案：页面加载后延迟加载所有懒加载图片
+                window.addEventListener('load', function() {
+                    setTimeout(function() {
+                        document.querySelectorAll('.lazy-img').forEach(img => {
+                            if (img.dataset.src) {
+                                img.src = img.dataset.src;
+                                img.classList.add('loaded');
+                            }
+                        });
+                    }, 1000);
+                });
+                return;
+            }
+
+            // 初始化观察者（全局复用）
+            lazyImgObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        // 新增：仅当src与data-src不一致时才加载
+                        if (img.dataset.src && img.src !== img.dataset.src) {
+                            img.src = img.dataset.src;
+                            img.classList.add('loaded');
+                            // 仅非弹窗图片取消观察（弹窗图片需要重复观察）
+                            if (img.id !== 'popupImg') {
+                                lazyImgObserver.unobserve(img);
+                            }
+                        }
+                    }
+                });
+            }, {
+                rootMargin: '200px 0px', // 提前200px开始加载
+                threshold: 0.1
+            });
+
+            // 观察所有懒加载图片
+            document.querySelectorAll('.lazy-img').forEach(img => {
+                lazyImgObserver.observe(img);
+            });
+        }
+
+        // 页面加载后初始化懒加载
+        window.addEventListener('DOMContentLoaded', initLazyLoad);
+
+        // ========== 2. 音频缓存池 - 避免重复加载，按需加载 ==========
+        const audioCache = new Map(); // 音频缓存池，key:音频路径，value:Audio实例
+
+        // 按钮配置（新增文本弹窗大小配置）
+        const btnConfigs = {
+            getBtnConfig(btn) {
+                return {
+                    text: btn.dataset.originalText,
+                    width: btn.style.width,
+                    height: btn.style.height,
+                    audioSrc: btn.dataset.audio,
+                    imgSrc: btn.dataset.popupImg,
+                    popupWidth: btn.dataset.popupWidth || '300px',
+                    popupHeight: btn.dataset.popupHeight || 'auto',
+                    popupLeft: btn.dataset.popupLeft || 'calc(50% + 100px)',
+                    popupTop: btn.dataset.popupTop || '50%',
+                    textContent: btn.dataset.textContent || '', // 文本内容
+                    textLeft: btn.dataset.textLeft || `calc(${btn.dataset.popupLeft.replace('calc(', '').replace(')', '')} + 150px)`, // 文本弹窗左定位
+                    textTop: btn.dataset.textTop || btn.dataset.popupTop, // 文本弹窗上定位
+                    textWidth: btn.dataset.textWidth || '380px', // 文本弹窗宽度（默认全局大小）
+                    textHeight: btn.dataset.textHeight || 'auto', // 文本弹窗高度（默认自适应）
+                    backgroundColor: 'linear-gradient(135deg, #fff, #f8f5f0)',
+                    border: '2px solid var(--primary-color)',
+                    fontSize: '12px'
+                };
+            }
+        };
+
+        // 初始化按钮事件
+        document.querySelectorAll('.react-btn').forEach(btn => {
+            btn.addEventListener('click', handleBtnClick);
+        });
+
+        // 关闭按钮事件
+        closeBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            hidePopup();
+            // 关闭图片弹窗时同时关闭文本弹窗
+            if (isTextPopupShow) {
+                hideTextPopup();
+            }
+            resetBtnToOriginal(currentBtn);
+            isPopupShow = false;
+        });
+
+        // 文本弹窗关闭按钮事件
+        textCloseBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            hideTextPopup();
+        });
+
+        // 空白处关闭弹窗
+        document.addEventListener('click', () => {
+            if (currentAudio) currentAudio.load();
+        }, { once: true });
+
+        document.addEventListener('click', function(e) {
+            if (isPopupShow && !popupWrapper.contains(e.target) && 
+                !document.querySelector('.react-btn.active')?.contains(e.target) &&
+                !textPopupWrapper.contains(e.target)) { // 排除文本弹窗区域
+                hidePopup();
+                if (isTextPopupShow) {
+                    hideTextPopup();
+                }
+                resetBtnToOriginal(currentBtn);
+                isPopupShow = false;
+            }
+        });
+
+        // ========== 3. 按钮点击处理 - 修复图片重复问题核心逻辑 ==========
+        function handleBtnClick(e) {
+            e.stopPropagation();
+            const btn = this;
+            const config = btnConfigs.getBtnConfig(btn);
+
+            if (isPopupShow && currentBtn === btn) {
+                replayAudio();
+                return;
+            }
+
+            if (isPopupShow && currentBtn !== btn) {
+                hidePopup();
+                // 切换按钮时关闭文本弹窗
+                if (isTextPopupShow) {
+                    hideTextPopup();
+                }
+                resetBtnToOriginal(currentBtn);
+            }
+
+            // ========== 音频按需加载优化 ==========
+            // 停止当前音频
+            if (currentAudio) {
+                currentAudio.pause();
+                clearInterval(progressInterval);
+            }
+
+            // 优先从缓存池获取音频，避免重复加载
+            if (audioCache.has(config.audioSrc)) {
+                currentAudio = audioCache.get(config.audioSrc);
+                currentAudio.currentTime = 0; // 重置播放位置
+            } else {
+                // 按需创建音频，不提前加载
+                currentAudio = new Audio();
+                currentAudio.preload = "none"; // 禁止预加载
+                currentAudio.src = config.audioSrc; // 点击后才加载音频
+                audioCache.set(config.audioSrc, currentAudio); // 存入缓存池
+            }
+            currentBtn = btn;
+
+            // 播放音频
+            currentAudio.play().catch(err => {
+                console.log('播放失败：', err);
+                alert('请先点击页面任意位置激活音频！');
+            });
+
+            // 音频结束事件
+            currentAudio.addEventListener('ended', function() {
+                progressBar.style.width = '0%';
+                hidePopup();
+                // 音频结束时关闭文本弹窗
+                if (isTextPopupShow) {
+                    hideTextPopup();
+                }
+                resetBtnToOriginal(currentBtn);
+                isPopupShow = false;
+            }, { once: true });
+
+            // ========== 修复：弹窗图片重置 + 强制更新 ==========
+            // 1. 清空原有src和懒加载状态
+            popupImg.src = ''; 
+            popupImg.classList.remove('loaded');
+            // 2. 重新赋值data-src
+            popupImg.dataset.src = config.imgSrc;
+            // 3. 强制触发懒加载（立即更新src）
+            popupImg.src = popupImg.dataset.src;
+            popupImg.classList.add('loaded');
+            // 4. 重新观察弹窗图片（确保观察者能检测到变化）
+            if (lazyImgObserver) {
+                lazyImgObserver.observe(popupImg);
+            }
+
+            // 设置弹窗样式
+            popupImg.style.width = config.popupWidth;
+            popupImg.style.height = config.popupHeight;
+            popupWrapper.style.left = config.popupLeft;
+            popupWrapper.style.top = config.popupTop;
+            popupWrapper.style.position = 'absolute';
+            popupWrapper.style.transform = 'none';
+            document.querySelector('.progress-container').style.width = config.popupWidth;
+            
+            setBtnToIconfont(btn);
+            showPopup();
+            isPopupShow = true;
+
+            // 显示文本弹窗（传入自定义大小）
+            if (config.textContent) {
+                showTextPopup(config.textContent, config.textLeft, config.textTop, config.textWidth, config.textHeight);
+            }
+        }
+
+        // 显示文本弹窗（新增大小参数，适配无滚动逻辑）
+        function showTextPopup(content, left, top, width, height) {
+            textPopupContent.textContent = content;
+            // 设置文本弹窗位置
+            textPopupWrapper.style.left = left;
+            textPopupWrapper.style.top = top;
+            // 设置文本弹窗大小（宽度限制，高度自适应）
+            textPopupWrapper.style.width = width;
+            textPopupWrapper.style.height = 'auto'; // 强制高度自适应，避免滚动
+            // 移除最小高度限制
+            textPopupWrapper.style.minHeight = 'unset';
+            textPopupWrapper.style.display = 'block';
+            isTextPopupShow = true;
+
+            // 额外保障：确保弹窗不会超出屏幕右侧/底部
+            const popupRect = textPopupWrapper.getBoundingClientRect();
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            // 如果弹窗右侧超出屏幕，左移
+            if (popupRect.right > windowWidth) {
+                textPopupWrapper.style.left = `calc(${left} - ${popupRect.right - windowWidth + 20}px)`;
+            }
+            // 如果弹窗底部超出屏幕，上移
+            if (popupRect.bottom > windowHeight) {
+                textPopupWrapper.style.top = `calc(${top} - ${popupRect.bottom - windowHeight + 20}px)`;
+            }
+        }
+
+        // 隐藏文本弹窗
+        function hideTextPopup() {
+            textPopupWrapper.style.display = 'none';
+            isTextPopupShow = false;
+        }
+
+        // 重新播放音频
+        function replayAudio() {
+            if (!currentAudio) return;
+            currentAudio.currentTime = 0;
+            currentAudio.play().catch(err => {
+                console.log('重新播放失败：', err);
+                alert('请先点击页面任意位置激活音频！');
+            });
+            progressBar.style.width = '0%';
+            clearInterval(progressInterval);
+            startProgressTimer();
+        }
+
+        // 设置按钮为图标
+        function setBtnToIconfont(btn) {
+            btn.innerHTML = `
+                <svg class="icon" aria-hidden="true">
+                    <use xlink:href="#icon-position-mark"></use>
+                </svg>
+            `;
+            btn.classList.add('active');
+            btn.style.fontSize = '';
+            btn.style.background = 'transparent';
+            btn.style.border = 'none';
+        }
+
+        // 重置按钮样式
+        function resetBtnToOriginal(btn) {
+            if (!btn) return;
+            const config = btnConfigs.getBtnConfig(btn);
+            btn.textContent = config.text;
+            btn.classList.remove('active');
+            btn.style.width = config.width;
+            btn.style.height = config.height;
+            btn.style.background = config.backgroundColor;
+            btn.style.border = config.border;
+            btn.style.fontSize = config.fontSize;
+            btn.style.animation = 'none';
+        }
+
+        // 显示弹窗 - 修复强制加载逻辑
+        function showPopup() {
+            popupWrapper.style.display = 'block';
+            document.querySelectorAll('.react-btn').forEach(btn => {
+                btn.style.pointerEvents = 'none';
+            });
+            startProgressTimer();
+            
+            // 强制触发懒加载（确保图片加载）
+            if (popupImg.dataset.src) {
+                popupImg.src = popupImg.dataset.src;
+                popupImg.classList.add('loaded');
+            }
+        }
+
+        // 隐藏弹窗
+        function hidePopup() {
+            popupWrapper.style.display = 'none';
+            clearInterval(progressInterval);
+            if (currentAudio) currentAudio.pause();
+            progressBar.style.width = '0%';
+            document.querySelectorAll('.react-btn').forEach(btn => {
+                btn.style.pointerEvents = 'auto';
+            });
+        }
+
+        // 进度条定时器
+        function startProgressTimer() {
+            clearInterval(progressInterval);
+            progressInterval = setInterval(() => {
+                if (currentAudio && currentAudio.duration) {
+                    const progress = (currentAudio.currentTime / currentAudio.duration) * 100;
+                    progressBar.style.width = `${progress}%`;
+                }
+            }, 100);
+        }
+
+        // 页面加载后锁定按钮尺寸
+        window.addEventListener('load', () => {
+            document.querySelectorAll('.react-btn').forEach(btn => {
+                btn.style.width = btn.style.width;
+                btn.style.height = btn.style.height;
+            });
+        });
+    </script>
+</body>
+</html>

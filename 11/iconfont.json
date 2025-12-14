@@ -1,0 +1,16 @@
+{
+  "id": "5088261",
+  "name": "Map",
+  "font_family": "iconfont",
+  "css_prefix_text": "icon-",
+  "description": "",
+  "glyphs": [
+    {
+      "icon_id": "11200927",
+      "name": "位置标记",
+      "font_class": "position-mark",
+      "unicode": "e600",
+      "unicode_decimal": 58880
+    }
+  ]
+}
